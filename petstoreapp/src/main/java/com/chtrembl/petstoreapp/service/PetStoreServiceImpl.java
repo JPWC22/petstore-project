@@ -1,5 +1,7 @@
 package com.chtrembl.petstoreapp.service;
 
+import com.chtrembl.petstoreapp.CustomPetStoreException;
+
 /**
  * Implementation for service calls to the APIM/AKS
  */
@@ -119,6 +121,7 @@ public class PetStoreServiceImpl implements PetStoreService {
 
 	@Override
 	public Collection<Product> getProducts(String category, List<Tag> tags) {
+		throwException();
 		List<Product> products = new ArrayList<>();
 
 		try {
@@ -178,6 +181,10 @@ public class PetStoreServiceImpl implements PetStoreService {
 			products.add(product);
 		}
 		return products;
+	}
+
+	private void throwException() {
+		throw new CustomPetStoreException("Cannot go Further");
 	}
 
 	@Override
