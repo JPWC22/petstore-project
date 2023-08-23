@@ -5,6 +5,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -17,6 +18,11 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
@@ -25,11 +31,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 
 import com.chtrembl.petstoreapp.model.ContainerEnvironment;
 import com.chtrembl.petstoreapp.model.Order;
 import com.chtrembl.petstoreapp.model.Pet;
+import com.chtrembl.petstoreapp.model.Product;
 import com.chtrembl.petstoreapp.model.User;
 import com.chtrembl.petstoreapp.model.WebPages;
 import com.chtrembl.petstoreapp.service.PetStoreService;
@@ -59,6 +67,9 @@ public class WebAppController {
 
 	@Autowired
 	private CacheManager currentUsersCacheManager;
+
+	@Autowired
+    private RestTemplate restTemplate;
 
 	@ModelAttribute
 	public void setModel(HttpServletRequest request, Model model, OAuth2AuthenticationToken token) {
@@ -211,6 +222,7 @@ public class WebAppController {
 
 	@GetMapping(value = "/cart")
 	public String cart(Model model, OAuth2AuthenticationToken token, HttpServletRequest request) {
+		logger.info("entering card endpoint");
 		Order order = this.petStoreService.retrieveOrder(this.sessionUser.getSessionId());
 		model.addAttribute("order", order);
 		int cartSize = 0;
@@ -223,8 +235,49 @@ public class WebAppController {
 			model.addAttribute("userLoggedIn", true);
 			model.addAttribute("email", this.sessionUser.getEmail());
 		}
+		logger.info("trigger azure function");
+		triggerAzureFunction(order);
 		return "cart";
 	}
+
+	private void triggerAzureFunction(Order order) {
+    try {
+        String functionUrl = "https://petstore-functionapp.azurewebsites.net/api/OrderItemsReserver?"; // Replace with your Azure Function's URL
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+		logger.info("entering private method");
+        List<Map<String, Object>> productsList = new ArrayList<>();
+        for (Product product : order.getProducts()) {
+            Map<String, Object> productMap = new HashMap<>();
+            productMap.put("product id", product.getId());
+            productMap.put("product qty", product.getQuantity());
+            productsList.add(productMap);
+        }
+		logger.info("setting request body");
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("sessionId", this.sessionUser.getSessionId());
+        requestBody.put("products", productsList);
+        requestBody.put("complete", order.isComplete());
+        requestBody.put("orderId", order.getId());
+		logger.info("set request body");
+        HttpEntity<Map<String, Object>> httpEntity = new HttpEntity<>(requestBody, headers);
+
+        ResponseEntity<String> response = restTemplate.exchange(functionUrl, HttpMethod.POST, httpEntity, String.class);
+
+        if (response.getStatusCode().is2xxSuccessful()) {
+            String responseBody = response.getBody();
+            logger.info("Azure Function response: " + responseBody);
+        } else {
+            logger.error("Azure Function triggering failed with status code: " + response.getStatusCode());
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+        logger.error("An error occurred while triggering the Azure Function: " + e.getMessage());
+    }
+	logger.info("cart endpoint ends");
+}
+
 
 	@PostMapping(value = "/updatecart")
 	public String updatecart(Model model, OAuth2AuthenticationToken token, HttpServletRequest request,
