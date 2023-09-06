@@ -17,8 +17,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.chtrembl.petstore.pet.api.PetApiController;
 
-import io.swagger.Swagger2SpringBoot;
-
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = PetApiController.class)
 @ContextConfiguration(classes = Swagger2SpringBoot.class)
