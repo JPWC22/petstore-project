@@ -98,54 +98,25 @@ public class PetApiController implements PetApi {
 	public ResponseEntity<List<Pet>> findPetsByStatus(
 			@NotNull @ApiParam(value = "Status values that need to be considered for filter", required = true, allowableValues = "available, pending, sold") @Valid @RequestParam(value = "status", required = true) List<String> status) {
 		conigureThreadForLogging();
-		PetApiController.log.info(String.format(
-				"ATTEMPT6"));
 		String acceptType = request.getHeader("Content-Type");
 		String contentType = request.getHeader("Content-Type");
-		// if (acceptType != null && contentType != null && acceptType.contains("application/json")
-		// 		&& contentType.contains("application/json")) {
+		if (acceptType != null && contentType != null && acceptType.contains("application/json")
+				&& contentType.contains("application/json")) {
 			PetApiController.log.info(String.format(
 					"PetStorePetService incoming GET request to petstorepetservice/v2/pet/findPetsByStatus?status=%s",
 					status));
-			PetApiController.log.info(String.format(
-					"ATTEMPT7"));
 			try {
-				PetApiController.log.info(String.format(
-						"ATTEMPT8"));
 				List<com.chtrembl.petstore.pet.entity.Pet> pets = petRepository.findByStatus("available");
-
-				List<Pet> petModels = new ArrayList<>();
-
-				for (com.chtrembl.petstore.pet.entity.Pet pet : pets) {
-					Pet petModel = new Pet();
-
-					// Assuming field names and types are similar, you can directly copy the values
-					petModel.setId(pet.getId());
-					petModel.setName(pet.getName());
-					Category category = new Category();
-					category.setId(pet.getCategory().getId());
-					category.setName(pet.getCategory().getName());
-					petModel.setCategory(category);
-					petModel.setPhotoURL(pet.getPhotoURL());
-					petModel.setStatus(StatusEnum.AVAILABLE);
-
-					petModels.add(petModel);
-				}
 				String petsJSON = new ObjectMapper().writeValueAsString(pets);
 				ApiUtil.setResponse(request, "application/json", petsJSON);
 				return new ResponseEntity<>(HttpStatus.OK);
 			} catch (JsonProcessingException e) {
-				PetApiController.log.info(String.format(
-						"ATTEMPT9"));
 				PetApiController.log.error("PetStorePetService with findPetsByStatus() " + e.getMessage());
 				ApiUtil.setResponse(request, "application/json", e.getMessage());
 				return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
 			}
-		// }
-		// PetApiController.log.info(String.format(
-		// 		"ATTEMPT10"));
-
-		// return new ResponseEntity<List<Pet>>(HttpStatus.NOT_IMPLEMENTED);
+		}
+		return new ResponseEntity<List<Pet>>(HttpStatus.NOT_IMPLEMENTED);
 	}
 
 	@Override

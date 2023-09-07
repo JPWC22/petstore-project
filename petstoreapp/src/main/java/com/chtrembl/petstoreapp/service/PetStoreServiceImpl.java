@@ -71,7 +71,6 @@ public class PetStoreServiceImpl implements PetStoreService {
 				String.format("PetStoreApp user %s is requesting to retrieve pets from the PetStorePetService",
 						this.sessionUser.getName()),
 				this.sessionUser.getCustomEventProperties(), null);
-		logger.info("ATTEMPT1");
 		try {
 			Consumer<HttpHeaders> consumer = it -> it.addAll(this.webRequest.getHeaders());
 			pets = this.petServiceWebClient.get().uri("petstorepetservice/v2/pet/findByStatus?status=available")
@@ -88,13 +87,11 @@ public class PetStoreServiceImpl implements PetStoreService {
 			// to show Telemetry with APIM requests (normally this would be cached in a real
 			// world production scenario)
 			this.sessionUser.setPets(pets);
-			logger.info("ATTEMPT2");
 			// filter this specific request per category
 			pets = pets.stream().filter(pet -> category.equals(pet.getCategory().getName()))
 					.collect(Collectors.toList());
 			return pets;
 		} catch (WebClientException wce) {
-			logger.info("ATTEMPT3 -> " + wce.getMessage() + " " + wce.getCause());
 			this.sessionUser.getTelemetryClient().trackException(wce);
 			this.sessionUser.getTelemetryClient().trackEvent(
 					String.format("PetStoreApp %s received %s, container host: %s", this.sessionUser.getName(),
@@ -106,7 +103,6 @@ public class PetStoreServiceImpl implements PetStoreService {
 			pet.setId((long) 0);
 			pets.add(pet);
 		} catch (IllegalArgumentException iae) {
-			logger.info("ATTEMPT4");
 			// little hack to visually show the error message within our Azure Pet Store
 			// Reference Guide (Academic Tutorial)
 			Pet pet = new Pet();
@@ -117,7 +113,6 @@ public class PetStoreServiceImpl implements PetStoreService {
 			pet.setId((long) 0);
 			pets.add(pet);
 		}
-		logger.info("ATTEMPT5");
 		return pets;
 	}
 
@@ -142,16 +137,16 @@ public class PetStoreServiceImpl implements PetStoreService {
 			// to show Telemetry with APIM requests (normally this would be cached in a real
 			// world production scenario)
 			this.sessionUser.setProducts(products);
-
+			products = products.stream().filter(product -> category.equals(product.getCategory().getName())).toList();
 			// filter this specific request per category
-			if (tags.stream().anyMatch(t -> t.getName().equals("large"))) {
-				products = products.stream().filter(product -> category.equals(product.getCategory().getName())
-						&& product.getTags().toString().contains("large")).collect(Collectors.toList());
-			} else {
+			// if (tags.stream().anyMatch(t -> t.getName().equals("large"))) {
+			// 	products = products.stream().filter(product -> category.equals(product.getCategory().getName())
+			// 			&& product.getTags().toString().contains("large")).collect(Collectors.toList());
+			// } else {
 
-				products = products.stream().filter(product -> category.equals(product.getCategory().getName())
-						&& product.getTags().toString().contains("small")).collect(Collectors.toList());
-			}
+			// 	products = products.stream().filter(product -> category.equals(product.getCategory().getName())
+			// 			&& product.getTags().toString().contains("small")).collect(Collectors.toList());
+			// }
 			return products;
 		} catch (
 
