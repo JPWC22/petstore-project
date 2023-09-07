@@ -1,20 +1,20 @@
 spring:
   application:
-    name: petstoreproductservice
+    name: petstorepetservice
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
   datasource:
     url: ${PRODUCTDB_URL:jdbc:postgresql://petstore-db.postgres.database.azure.com/petstorepetservice_db}
     username: ${DB_USER:postgres@petstore-db}
-    password: ${DB_PASSWORD:password123!}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
     scan:
-      package-to-scan: com.chtrembl.petstore.product.entity
+      package-to-scan: com.chtrembl.petstore.pet.entity
 
 springfoxdocumentation:
   swagger:

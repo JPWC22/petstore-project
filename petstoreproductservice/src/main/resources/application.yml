@@ -7,7 +7,7 @@ spring:
   datasource:
     url: ${PRODUCTDB_URL:jdbc:postgresql://petstore-db.postgres.database.azure.com/petstoreproductservice_db}
     username: ${DB_USER:postgres@petstore-db}
-    password: ${DB_PASSWORD:password123!}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
