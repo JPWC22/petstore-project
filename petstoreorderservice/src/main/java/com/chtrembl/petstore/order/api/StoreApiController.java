@@ -3,30 +3,46 @@ package com.chtrembl.petstore.order.api;
 import com.chtrembl.petstore.order.model.ContainerEnvironment;
 import com.chtrembl.petstore.order.model.Order;
 import com.chtrembl.petstore.order.model.Product;
+import com.chtrembl.petstore.order.repository.OrderRepository;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.annotations.ApiParam;
+
+import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.NativeWebRequest;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Min;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @javax.annotation.Generated(value = "io.swagger.codegen.languages.SpringCodegen", date = "2021-12-21T10:17:19.885-05:00")
 
@@ -41,19 +57,17 @@ public class StoreApiController implements StoreApi {
 	private final NativeWebRequest request;
 
 	@Autowired
-	@Qualifier(value = "cacheManager")
-	private CacheManager cacheManager;
-
-	@Autowired
 	private ContainerEnvironment containerEnvironment;
 
-	@Autowired
-	private StoreApiCache storeApiCache;
 
-	@Override
-	public StoreApiCache getBeanToBeAutowired() {
-		return storeApiCache;
-	}
+	@Value("${petstore.service.product.url:}")
+	private String petStoreProductServiceURL;
+
+	@Autowired
+	private RestTemplate restTemplate;
+
+	@Autowired
+	private OrderRepository orderRepository;
 
 	@org.springframework.beans.factory.annotation.Autowired
 	public StoreApiController(ObjectMapper objectMapper, NativeWebRequest request) {
@@ -83,9 +97,9 @@ public class StoreApiController implements StoreApi {
 
 		int ordersCacheSize = 0;
 		try {
-			org.springframework.cache.concurrent.ConcurrentMapCache mapCache = ((org.springframework.cache.concurrent.ConcurrentMapCache) this.cacheManager
-					.getCache("orders"));
-			ordersCacheSize = mapCache.getNativeCache().size();
+			// org.springframework.cache.concurrent.ConcurrentMapCache mapCache = ((org.springframework.cache.concurrent.ConcurrentMapCache) this.cacheManager
+			// 		.getCache("orders"));
+			// ordersCacheSize = mapCache.getNativeCache().size();
 		} catch (Exception e) {
 			log.warn(String.format("could not get the orders cache size :%s", e.getMessage()));
 		}
@@ -95,7 +109,8 @@ public class StoreApiController implements StoreApi {
 		ApiUtil.setResponse(request, "application/json",
 				"{ \"service\" : \"order service\", \"version\" : \"" + containerEnvironment.getAppVersion()
 						+ "\", \"container\" : \"" + containerEnvironment.getContainerHostName()
-						+ "\", \"ordersCacheSize\" : \"" + ordersCacheSize + "\", \"author\" : \"" + containerEnvironment.getAuthor()
+						+ "\", \"ordersCacheSize\" : \"" + ordersCacheSize + "\", \"author\" : \""
+						+ containerEnvironment.getAuthor()
 						+ "\" }");
 		return new ResponseEntity<>(HttpStatus.OK);
 	}
@@ -104,7 +119,7 @@ public class StoreApiController implements StoreApi {
 	public ResponseEntity<Order> placeOrder(
 			@ApiParam(value = "order placed for purchasing the product", required = true) @Valid @RequestBody Order body) {
 		conigureThreadForLogging();
-
+		log.info("HERE: placeOrder has been called!");
 		String acceptType = request.getHeader("Content-Type");
 		String contentType = request.getHeader("Content-Type");
 		if (acceptType != null && contentType != null && acceptType.contains("application/json")
@@ -113,20 +128,26 @@ public class StoreApiController implements StoreApi {
 			log.info(String.format(
 					"PetStoreOrderService incoming POST request to petstoreorderservice/v2/order/placeOder for order id:%s",
 					body.getId()));
-
-			this.storeApiCache.getOrder(body.getId()).setId(body.getId());
-			this.storeApiCache.getOrder(body.getId()).setEmail(body.getEmail());
-			this.storeApiCache.getOrder(body.getId()).setComplete(body.isComplete());
+			Order order = null;
+			Optional<Order> existingOrder = orderRepository.findById(body.getId());
+			if (existingOrder.isPresent()) {
+				order = existingOrder.get();
+			} else {
+				order = new Order();
+				order.setId(body.getId());
+				order.setEmail(body.getEmail());
+				order.setComplete(body.isComplete());
+			}
 
 			// 1 product is just an add from a product page so cache needs to be updated
 			if (body.getProducts() != null && body.getProducts().size() == 1) {
 				Product incomingProduct = body.getProducts().get(0);
-				List<Product> existingProducts = this.storeApiCache.getOrder(body.getId()).getProducts();
+				List<Product> existingProducts = order.getProducts();
 				if (existingProducts != null && existingProducts.size() > 0) {
 					// removal if one exists...
 					if (incomingProduct.getQuantity() == 0) {
 						existingProducts.removeIf(product -> product.getId().equals(incomingProduct.getId()));
-						this.storeApiCache.getOrder(body.getId()).setProducts(existingProducts);
+						order.setProducts(existingProducts);
 					}
 					// update quantity if one exists or add new entry
 					else {
@@ -145,24 +166,24 @@ public class StoreApiController implements StoreApi {
 							}
 						} else {
 							// existing products but one does not exist matching the incoming product
-							this.storeApiCache.getOrder(body.getId()).addProductsItem(body.getProducts().get(0));
+							order.addProductsItem(body.getProducts().get(0));
 						}
 					}
 				} else {
 					// nothing existing....
 					if (body.getProducts().get(0).getQuantity() > 0) {
-						this.storeApiCache.getOrder(body.getId()).setProducts(body.getProducts());
+						order.setProducts(body.getProducts());
 					}
 				}
 			}
 			// n products is the current order being modified and so cache can be replaced
 			// with it
 			if (body.getProducts() != null && body.getProducts().size() > 1) {
-				this.storeApiCache.getOrder(body.getId()).setProducts(body.getProducts());
+				order.setProducts(body.getProducts());
 			}
 
 			try {
-				Order order = this.storeApiCache.getOrder(body.getId());
+				order = orderRepository.save(order);
 				String orderJSON = new ObjectMapper().writeValueAsString(order);
 
 				ApiUtil.setResponse(request, "application/json", orderJSON);
@@ -181,7 +202,7 @@ public class StoreApiController implements StoreApi {
 	public ResponseEntity<Order> getOrderById(
 			@ApiParam(value = "ID of the order that needs to be deleted", required = true) @PathVariable("orderId") String orderId) {
 		conigureThreadForLogging();
-
+		log.info("HERE: getOrderById has been called!");
 		String acceptType = request.getHeader("Content-Type");
 		String contentType = request.getHeader("Content-Type");
 		if (acceptType != null && contentType != null && acceptType.contains("application/json")
@@ -191,9 +212,12 @@ public class StoreApiController implements StoreApi {
 					"PetStoreOrderService incoming GET request to petstoreorderservice/v2/order/getOrderById for order id:%s",
 					orderId));
 
-			List<Product> products = this.storeApiCache.getProducts();
-
-			Order order = this.storeApiCache.getOrder(orderId);
+			List<Product> products = retrieveProducts();
+			Order order = null;
+			Optional<Order> existingOrder  = orderRepository.findById(orderId);
+			if (existingOrder .isPresent()) {
+				order = existingOrder.get();
+			} 
 
 			if (products != null) {
 				// cross reference order data (order only has product id and qty) with product
@@ -229,6 +253,74 @@ public class StoreApiController implements StoreApi {
 		conigureThreadForLogging();
 
 		return products.stream().filter(product -> id.equals(product.getId())).findAny().orElse(null);
+	}
+
+	private List<Product> retrieveProducts() {
+		log.info(String.format(
+				"PetStoreOrderService retrieving products from %s/petstoreproductservice/v2/product/findByStatus?status=available",
+				this.petStoreProductServiceURL));
+		List<Product> products = null;
+		ResponseEntity<String> response = null;
+
+		try {
+			HttpHeaders headers = new HttpHeaders();
+			headers.add("Accept", MediaType.APPLICATION_JSON_VALUE);
+			headers.add("Content-Type", MediaType.APPLICATION_JSON_VALUE);
+			headers.add("session-id", "PetStoreOrderService");
+			HttpEntity<String> entity = new HttpEntity<String>("parameters", headers);
+			restTemplate.setRequestFactory(new CustomHttpComponentsClientHttpRequestFactory());
+			response = restTemplate
+					.exchange(String.format("%s/petstoreproductservice/v2/product/findByStatus?status=available",
+							this.petStoreProductServiceURL), HttpMethod.GET, entity, String.class);
+		} catch (Exception e) {
+			log.error(String.format(
+					"PetStoreOrderService error retrieving products from petstoreproductservice/v2/product/findByStatus?status=available %s",
+					e.getMessage()));
+			// product lookup cannot be done from this container...
+			return products;
+		}
+		try {
+			products = objectMapper.readValue(response.getBody(), new TypeReference<List<Product>>() {
+			});
+		} catch (JsonParseException e1) {
+			log.error(String.format(
+					"PetStoreOrderService error retrieving products from %spetstoreproductservice/v2/product/findByStatus?status=available ",
+					e1.getMessage()));
+		} catch (JsonMappingException e1) {
+			log.error(String.format(
+					"PetStoreOrderService error retrieving products from %spetstoreproductservice/v2/product/findByStatus?status=available ",
+					e1.getMessage()));
+		} catch (IOException e1) {
+			log.error(String.format(
+					"PetStoreOrderService error retrieving products from %spetstoreproductservice/v2/product/findByStatus?status=available ",
+					e1.getMessage()));
+		}
+		return products;
+	}
+
+	private static final class CustomHttpComponentsClientHttpRequestFactory
+			extends HttpComponentsClientHttpRequestFactory {
+
+		@Override
+		protected HttpUriRequest createHttpUriRequest(HttpMethod httpMethod, URI uri) {
+
+			if (HttpMethod.GET.equals(httpMethod)) {
+				return new HttpEntityEnclosingGetRequestBase(uri);
+			}
+			return super.createHttpUriRequest(httpMethod, uri);
+		}
+	}
+
+	private static final class HttpEntityEnclosingGetRequestBase extends HttpEntityEnclosingRequestBase {
+
+		public HttpEntityEnclosingGetRequestBase(final URI uri) {
+			super.setURI(uri);
+		}
+
+		@Override
+		public String getMethod() {
+			return HttpMethod.GET.name();
+		}
 	}
 
 	@Override
