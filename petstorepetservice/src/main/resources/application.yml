@@ -5,9 +5,9 @@ spring:
     pathmatch:
       matching-strategy: ant_path_matcher
   datasource:
-    url: ${PRODUCTDB_URL:jdbc:postgresql://localhost:5432/petstorepetservice_db}
-    username: postgres
-    password: ${DB_PASSWORD:password}
+    url: ${PRODUCTDB_URL:jdbc:postgresql://petstore-db.postgres.database.azure.com/petstorepetservice_db}
+    username: ${DB_USER:postgres@petstore-db}
+    password: ${DB_PASSWORD:password123!}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -22,7 +22,7 @@ springfoxdocumentation:
       path: /api-docs
       
 server:
-  port: ${PETSTOREPETSERVICE_SERVER_PORT:8081}
+  port: ${PETSTOREPETSERVICE_SERVER_PORT:8080}
   
 management:
   endpoints:
