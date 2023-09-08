@@ -118,7 +118,6 @@ public class StoreApiController implements StoreApi {
 	public ResponseEntity<Order> placeOrder(
 			@ApiParam(value = "order placed for purchasing the product", required = true) @Valid @RequestBody Order body) {
 		conigureThreadForLogging();
-		log.info("HERE: placeOrder has been called!");
 		String acceptType = request.getHeader("Content-Type");
 		String contentType = request.getHeader("Content-Type");
 		if (acceptType != null && contentType != null && acceptType.contains("application/json")
@@ -201,7 +200,6 @@ public class StoreApiController implements StoreApi {
 	public ResponseEntity<Order> getOrderById(
 			@ApiParam(value = "ID of the order that needs to be deleted", required = true) @PathVariable("orderId") String orderId) {
 		conigureThreadForLogging();
-		log.info("HERE: getOrderById has been called!");
 		String acceptType = request.getHeader("Content-Type");
 		String contentType = request.getHeader("Content-Type");
 		if (acceptType != null && contentType != null && acceptType.contains("application/json")
