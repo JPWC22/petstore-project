@@ -59,20 +59,19 @@ public class StoreApiController implements StoreApi {
 	@Autowired
 	private ContainerEnvironment containerEnvironment;
 
-
 	@Value("${petstore.service.product.url:}")
 	private String petStoreProductServiceURL;
 
 	@Autowired
 	private RestTemplate restTemplate;
 
-	@Autowired
-	private OrderRepository orderRepository;
+	private final OrderRepository orderRepository;
 
 	@org.springframework.beans.factory.annotation.Autowired
-	public StoreApiController(ObjectMapper objectMapper, NativeWebRequest request) {
+	public StoreApiController(ObjectMapper objectMapper, NativeWebRequest request, OrderRepository orderRepository) {
 		this.objectMapper = objectMapper;
 		this.request = request;
+		this.orderRepository = orderRepository;
 	}
 
 	// should really be in an interceptor
