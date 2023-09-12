@@ -5,9 +5,7 @@ spring:
     pathmatch:
       matching-strategy: ant_path_matcher
   datasource:
-    url: ${PRODUCTDB_URL:jdbc:postgresql://petstore-db.postgres.database.azure.com/petstoreproductservice_db}
-    username: ${DB_USER:postgres@petstore-db}
-    password: ${DB_PASSWORD}
+    url: ${PRODUCT_SERVICE_DATABASE_CONNECTION_STRING}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -15,6 +13,11 @@ spring:
     show-sql: true
     scan:
       package-to-scan: com.chtrembl.petstore.product.entity
+  cloud:
+    azure:
+      key-vault:
+        uri: https://johann-keyvault.vault.azure.net/
+        connected: true
 
 springfoxdocumentation:
   swagger:
@@ -28,10 +31,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: "*"       
+        include: "*"
   trace:
     http:
-      enabled: true 
+      enabled: true
   endpoint:
     httptrace:
       enabled: true
