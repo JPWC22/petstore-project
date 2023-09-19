@@ -3,12 +3,13 @@ package com.function;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
-import java.util.List;
 import java.util.Map;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
+
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
@@ -37,7 +38,8 @@ public class OrderItemsReserverFunction {
         String connectionString = System.getenv("BlobStorageConnectionString");
         String containerName = "order-requests";
         String sessionId = String.valueOf(requestBody.get("id"));
-        String blobName = sessionId + ".json";
+        String timestamp = Instant.now().toString();
+        String blobName = sessionId + "_" + timestamp + ".json";
 
         BlobServiceClient blobServiceClient = new BlobServiceClientBuilder().connectionString(connectionString)
                 .buildClient();
