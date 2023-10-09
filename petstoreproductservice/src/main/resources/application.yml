@@ -12,6 +12,20 @@ spring:
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
+  datasource:
+    url: ${PRODUCT_SERVICE_DATABASE_CONNECTION_STRING}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    scan:
+      package-to-scan: com.chtrembl.petstore.product.entity
+  cloud:
+    azure:
+      key-vault:
+        uri: https://petstore-keyvault931.vault.azure.net/
+        connected: true
 
 management:
   endpoints:

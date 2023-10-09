@@ -29,6 +29,7 @@ import com.chtrembl.petstore.pet.model.ContainerEnvironment;
 import com.chtrembl.petstore.pet.model.DataPreload;
 import com.chtrembl.petstore.pet.model.ModelApiResponse;
 import com.chtrembl.petstore.pet.model.Pet;
+import com.chtrembl.petstore.pet.repository.PetRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -50,6 +51,9 @@ public class PetApiController implements PetApi {
 
 	@Autowired
 	private DataPreload dataPreload;
+
+	@Autowired
+	private PetRepository petRepository;
 
 	@Override
 	public DataPreload getBeanToBeAutowired() {
@@ -100,7 +104,8 @@ public class PetApiController implements PetApi {
 					"PetStorePetService incoming GET request to petstorepetservice/v2/pet/findPetsByStatus?status=%s",
 					status));
 			try {
-				String petsJSON = new ObjectMapper().writeValueAsString(this.getPreloadedPets());
+				List<com.chtrembl.petstore.pet.entity.Pet> pets = petRepository.findByStatus("available");
+				String petsJSON = new ObjectMapper().writeValueAsString(pets);
 				ApiUtil.setResponse(request, "application/json", petsJSON);
 				return new ResponseEntity<>(HttpStatus.OK);
 			} catch (JsonProcessingException e) {

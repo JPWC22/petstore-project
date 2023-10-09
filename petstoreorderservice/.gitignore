@@ -25,3 +25,5 @@ blog/bin/
 
 #Visual Studio Code files
 **/.vscode/
+
+*.env

@@ -138,16 +138,13 @@ public class PetStoreServiceImpl implements PetStoreService {
 			// to show Telemetry with APIM requests (normally this would be cached in a real
 			// world production scenario)
 			this.sessionUser.setProducts(products);
+			products = products.stream().filter(product -> category.equals(product.getCategory().getName())).toList();
 
-			// filter this specific request per category
-			if (tags.stream().anyMatch(t -> t.getName().equals("large"))) {
-				products = products.stream().filter(product -> category.equals(product.getCategory().getName())
-						&& product.getTags().toString().contains("large")).collect(Collectors.toList());
-			} else {
-
-				products = products.stream().filter(product -> category.equals(product.getCategory().getName())
-						&& product.getTags().toString().contains("small")).collect(Collectors.toList());
-			}
+			logger.info("Product Size: {}", products.size());
+			this.sessionUser.getTelemetryClient().trackEvent(
+					String.format("The name of the PetStoreApp user is %s . The session id is %s",
+							this.sessionUser.getName(), this.sessionUser.getSessionId()),
+					this.sessionUser.getCustomEventProperties(), null);
 			return products;
 		} catch (
 

@@ -29,3 +29,8 @@ management:
   endpoint:
     httptrace:
       enabled: true
+azure:
+  cosmosdb:
+    uri: ${COSMO_DB_CONNECTION_STRING:https://petstore-cosmodb.documents.azure.com:443/}
+    key: ${COSMO_DB_KEY}
+    database: petstore-db

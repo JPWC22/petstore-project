@@ -29,6 +29,7 @@ import com.chtrembl.petstore.product.model.ContainerEnvironment;
 import com.chtrembl.petstore.product.model.DataPreload;
 import com.chtrembl.petstore.product.model.ModelApiResponse;
 import com.chtrembl.petstore.product.model.Product;
+import com.chtrembl.petstore.product.repository.ProductRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -51,6 +52,9 @@ public class ProductApiController implements ProductApi {
 
 	@Autowired
 	private DataPreload dataPreload;
+
+	@Autowired
+	private ProductRepository productRepository;
 
 	@Override
 	public DataPreload getBeanToBeAutowired() {
@@ -101,7 +105,9 @@ public class ProductApiController implements ProductApi {
 					"PetStoreProductService incoming GET request to petstoreproductservice/v2/pet/findProductsByStatus?status=%s",
 					status));
 			try {
-				String petsJSON = new ObjectMapper().writeValueAsString(this.getPreloadedProducts());
+				List<com.chtrembl.petstore.product.entity.Product> products = productRepository
+						.findByStatus("available");
+				String petsJSON = new ObjectMapper().writeValueAsString(products);
 				ApiUtil.setResponse(request, "application/json", petsJSON);
 				return new ResponseEntity<>(HttpStatus.OK);
 			} catch (JsonProcessingException e) {
