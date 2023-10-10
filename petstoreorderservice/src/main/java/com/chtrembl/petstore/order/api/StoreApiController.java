@@ -184,7 +184,6 @@ public class StoreApiController implements StoreApi {
 			try {
 				order = orderRepository.save(order);
 				String orderJSON = new ObjectMapper().writeValueAsString(order);
-				log.info("HERE!!");
 				serviceBusHandler.sendMessage(orderJSON);
 				ApiUtil.setResponse(request, "application/json", orderJSON);
 				return new ResponseEntity<>(HttpStatus.OK);
